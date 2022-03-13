@@ -1,12 +1,9 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
-#include <deque>
 #include <atlstr.h>
 #include <tchar.h>
 
-#include "IMathToken.h"
-#include "CMathTokenValue.h"
 #include "CMathTokenOperator.h"
 #include "ShuntingYard.h"
 
@@ -17,9 +14,9 @@ int main(int /*argc*/, char* /*/argv[] */ )
     std::cout << "Welcome, please enter your space separated math equation below:\n";
     const CString strEquation("5 + 8 * 10");
 
-    std::deque<IMathToken*> dq = ShuntingYard(strEquation);
+    const double dResult = ShuntingYard(strEquation);
 
-    dq;
+    std::cout << "The result is: " << dResult;
     /*std::deque<IMathToken*> LineOfMath;
 
     CMathTokenValue     FirstValue (8);

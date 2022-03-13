@@ -1,8 +1,8 @@
 #pragma once
-#include "IMathToken.h"
 #include <assert.h>
+#include <cmath>
 
-class CMathTokenOperator : public IMathToken
+class CMathTokenOperator
 {
 public:
     enum class EMathOperatorType
@@ -13,7 +13,8 @@ public:
         MOT_MULTIPLY,
         MOT_DIVIDE,
         MOT_ADD,
-        MOT_SUBTRACT
+        MOT_SUBTRACT,
+        MOT_LAST
     };
 
     enum class EMathOperatorAssociativity
@@ -22,34 +23,60 @@ public:
         MOA_RIGHT
     };
 
-    CMathTokenOperator(EMathOperatorType eOperatorType)
-        :m_eOperatorType(eOperatorType)
-        ,m_eOperatorAssociativity(eOperatorType == EMathOperatorType::MOT_EXPONENT ? EMathOperatorAssociativity::MOA_RIGHT : EMathOperatorAssociativity::MOA_LEFT)
+    CMathTokenOperator(const CString& strToken)
+        :m_eOperatorType(EMathOperatorType::MOT_LAST)
+        ,m_eOperatorAssociativity(EMathOperatorAssociativity::MOA_LEFT)
         ,m_iOperatorPrecedence(-1)
     {
-        switch (m_eOperatorType)
+        switch (strToken[0])
         {
-        case EMathOperatorType::MOT_EXPONENT:
+        case '^':
+            m_eOperatorType = EMathOperatorType::MOT_EXPONENT;
             m_iOperatorPrecedence = 4;
+            m_eOperatorAssociativity = EMathOperatorAssociativity::MOA_RIGHT;
             break;
-        case EMathOperatorType::MOT_BRACE_OPEN:
-        case EMathOperatorType::MOT_BRACE_CLOSE:
+        case '(':
+            m_eOperatorType = EMathOperatorType::MOT_BRACE_OPEN;
             m_iOperatorPrecedence = 3;
             break;
-        case EMathOperatorType::MOT_MULTIPLY:
-        case EMathOperatorType::MOT_DIVIDE:
+        case ')':
+            m_eOperatorType = EMathOperatorType::MOT_BRACE_CLOSE;
+            m_iOperatorPrecedence = 3;
+            break;
+        case '*':
+            m_eOperatorType = EMathOperatorType::MOT_MULTIPLY;
             m_iOperatorPrecedence = 2;
             break;
-        case EMathOperatorType::MOT_ADD:
-        case EMathOperatorType::MOT_SUBTRACT:
+        case '/':
+            m_eOperatorType = EMathOperatorType::MOT_DIVIDE;
+            m_iOperatorPrecedence = 2;
+            break;
+        case '+':
+            m_eOperatorType = EMathOperatorType::MOT_ADD;
+            m_iOperatorPrecedence = 1;
+            break;
+        case '-':
+            m_eOperatorType = EMathOperatorType::MOT_SUBTRACT;
             m_iOperatorPrecedence = 1;
             break;
         default:
             assert(false);
             break;
         }
-
     };
+
+    inline friend bool operator< (const CMathTokenOperator& lhs, const CMathTokenOperator& rhs)
+    { 
+        if (lhs.m_iOperatorPrecedence == rhs.m_iOperatorPrecedence)
+        {
+            return rhs.m_eOperatorAssociativity == EMathOperatorAssociativity::MOA_RIGHT;
+        }
+        else
+        {
+            return lhs.m_iOperatorPrecedence < rhs.m_iOperatorPrecedence;
+        }
+
+    }
 
     double ProcessOperator(const double dFirst, const double dSecond) const
     {
@@ -60,7 +87,7 @@ public:
             break;
         case EMathOperatorType::MOT_BRACE_OPEN:
         case EMathOperatorType::MOT_BRACE_CLOSE:
-            throw std::logic_error("The method or operation is not implemented.");
+            //throw std::logic_error("The method or operation is not implemented.");
             break;
         case EMathOperatorType::MOT_MULTIPLY:
             return dFirst * dSecond;
@@ -68,7 +95,7 @@ public:
         case EMathOperatorType::MOT_DIVIDE:
             assert(dSecond != 0.0);
             if (dSecond != 0.0)
-            { 
+            {
                 return dFirst / dSecond;
             }
             else
@@ -89,12 +116,9 @@ public:
         return 0.0;
     }
 
-    // From IMathToken:
-    virtual bool IsOperator() const override { return true; }
-
 private:
-    const EMathOperatorType             m_eOperatorType;
-    int                                 m_iOperatorPrecedence;
-    const EMathOperatorAssociativity    m_eOperatorAssociativity;
+    EMathOperatorType           m_eOperatorType;
+    int                         m_iOperatorPrecedence;
+    EMathOperatorAssociativity  m_eOperatorAssociativity;
 };
 

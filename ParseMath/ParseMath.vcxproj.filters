@@ -18,18 +18,15 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ShuntingYard.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IMathToken.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CMathTokenOperator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ShuntingYard.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CMathTokenValue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
