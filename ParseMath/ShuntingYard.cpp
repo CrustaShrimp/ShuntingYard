@@ -88,20 +88,26 @@ double ShuntingYard(CString strEquation)
         {
             // the token was not a value, it must be an operator
             const CMathTokenOperator Operator(strToken);
-            if (!OperatorStack.empty() && Operator < OperatorStack.top())
+            if (OperatorStack.empty())
             {
-                assert(NumStack.size() >= 2);
-                // Process the operator immediately
-                const double dSecondOperand = NumStack.top();
-                NumStack.pop();
-                const double dFirstOperand = NumStack.top();
-                NumStack.pop();
-                const double dResult = Operator.ProcessOperator(dFirstOperand, dSecondOperand);
-                NumStack.push(dResult);
+                // Add to stack
+                OperatorStack.push(Operator);
             }
             else
             {
-                // Add to stack
+                while (!OperatorStack.empty() && Operator < OperatorStack.top())
+                {
+                    assert(NumStack.size() >= 2);
+                    // Process the stack operator immediately
+                    const double dSecondOperand = NumStack.top();
+                    NumStack.pop();
+                    const double dFirstOperand = NumStack.top();
+                    NumStack.pop();
+                    CMathTokenOperator OperatorFromStack = OperatorStack.top();
+                    OperatorStack.pop();
+                    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
+                    NumStack.push(dResult);
+                }
                 OperatorStack.push(Operator);
             }
             

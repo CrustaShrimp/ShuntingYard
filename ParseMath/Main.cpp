@@ -12,11 +12,23 @@
 int main(int /*argc*/, char* /*/argv[] */ )
 {
     std::cout << "Welcome, please enter your space separated math equation below:\n";
-    const CString strEquation("5 + 8 * 10");
+    CString strEquation("5 + 8 * 10");
 
-    const double dResult = ShuntingYard(strEquation);
+    double dResult = ShuntingYard(strEquation);
 
-    std::cout << "The result is: " << dResult;
+    std::wcout << "The result of the calculation " << strEquation.GetString() <<" is: " << dResult << "\n";
+
+    strEquation = ("5+8*10");
+
+    dResult = ShuntingYard(strEquation);
+
+    std::wcout << "The result of the calculation " << strEquation.GetString() << " is: " << dResult << "\n";
+
+    strEquation = ("456*9+1385-12.5");
+
+    dResult = ShuntingYard(strEquation);
+
+    std::wcout << "The result of the calculation " << strEquation.GetString() << " is: " << dResult << "\n";
     /*std::deque<IMathToken*> LineOfMath;
 
     CMathTokenValue     FirstValue (8);
