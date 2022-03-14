@@ -11,56 +11,67 @@
 
 int main(int /*argc*/, char* /*/argv[] */ )
 {
-    std::cout << "Welcome, please enter your space separated math equation below:\n";
+    // 1) Simple equation
     CString strEquation("5 + 8 * 10");
-
     double dResult = ShuntingYard(strEquation);
+    assert(dResult == 85);
 
-    std::wcout << "The result of the calculation " << strEquation.GetString() <<" is: " << dResult << "\n";
-
-    strEquation = ("5+8*10");
-
+    // 2) Simple equation with and without spaces
+    strEquation = ("5+8 *10");
     dResult = ShuntingYard(strEquation);
+    assert(dResult == 85);
 
-    std::wcout << "The result of the calculation " << strEquation.GetString() << " is: " << dResult << "\n";
-
+    // 3) Complexer equation
     strEquation = ("456*9+1385-12.5");
-
     dResult = ShuntingYard(strEquation);
+    assert(dResult == 5476.5);
 
-    std::wcout << "The result of the calculation " << strEquation.GetString() << " is: " << dResult << "\n";
-    /*std::deque<IMathToken*> LineOfMath;
+    // 4) Equation with power
+    strEquation = ("5^3+8*7");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == 181);
 
-    CMathTokenValue     FirstValue (8);
-    CMathTokenValue     SecondValue(10);
-    CMathTokenOperator  Operator   (CMathTokenOperator::EMathOperatorType::MOT_MULTIPLY);
-    LineOfMath.push_back(&FirstValue);
-    LineOfMath.push_back(&SecondValue);
-    LineOfMath.push_back(&Operator);
+    // 5) Equation with braces
+    strEquation = ("(12+5)*8^2");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == 1088);
 
-    auto itOperator = std::find_if(LineOfMath.begin(), LineOfMath.end(), [](const IMathToken* pToken)
-        {
-            return pToken->IsOperator();
-        });
+    // 5.2) Equation with double braces
+    strEquation = ("(12+5*(3+3))*8^2");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == 2688);
 
-    if (itOperator != LineOfMath.end())
-    {
-        // TODO Check availability of (itOperator-1) and (itOperator - 2)
+    // 6) Equation with braces and missing operator
+    strEquation = ("2(12+5)*8^2");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == 2176);
 
-        const CMathTokenOperator* const pMathOperator = dynamic_cast<CMathTokenOperator*>(*itOperator    );
-              CMathTokenValue* const    pFirstValue   = dynamic_cast<CMathTokenValue*>   (*(itOperator-2));
-        const CMathTokenValue* const    pSecondValue  = dynamic_cast<CMathTokenValue*>   (*(itOperator-1));
-        if (pMathOperator && pFirstValue && pSecondValue)
-        {
-            const double dResult = pMathOperator->ProcessOperator(pFirstValue->GetValue(), pSecondValue->GetValue());
-            pFirstValue->SetValue(dResult);
-            auto itSecondValue = (itOperator - 1);
-            LineOfMath.erase(itSecondValue);
-            LineOfMath.erase(itOperator);
-            std::cout << "The computed value is: " << pFirstValue->GetValue();
-        }
-    }*/
+    // 7) Equation with negative numbers
+    strEquation = ("-8*5+6 *-3");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == -58);
 
+    // 8) Equation with negative numbers pt 2
+    strEquation = ("-8*5--6*3");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == -58);
+
+    // 8) Invalid equations and operators...
+    strEquation = ("456&9");
+    dResult = ShuntingYard(strEquation);
+    // Operator not supported
+
+    strEquation = ("456|9");
+    dResult = ShuntingYard(strEquation);
+    // Operator not supported
+
+    strEquation = ("456**9");
+    dResult = ShuntingYard(strEquation);
+    // Double operator, ignored
+
+    strEquation = ("456^(9+5");
+    dResult = ShuntingYard(strEquation);
+    // Missing closing brace
 
     return EXIT_SUCCESS; // optional return value
 }
