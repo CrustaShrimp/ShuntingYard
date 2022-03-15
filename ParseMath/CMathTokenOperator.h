@@ -30,18 +30,18 @@ public:
     {
         switch (strToken[0])
         {
-        case '^':
-            m_eOperatorType = EMathOperatorType::MOT_EXPONENT;
-            m_iOperatorPrecedence = 4;
-            m_eOperatorAssociativity = EMathOperatorAssociativity::MOA_RIGHT;
-            break;
         case '(':
             m_eOperatorType = EMathOperatorType::MOT_BRACE_OPEN;
-            m_iOperatorPrecedence = 3;
+            m_iOperatorPrecedence = 0;
             break;
         case ')':
             m_eOperatorType = EMathOperatorType::MOT_BRACE_CLOSE;
+            m_iOperatorPrecedence = 0;
+            break;
+        case '^':
+            m_eOperatorType = EMathOperatorType::MOT_EXPONENT;
             m_iOperatorPrecedence = 3;
+            m_eOperatorAssociativity = EMathOperatorAssociativity::MOA_RIGHT;
             break;
         case '*':
             m_eOperatorType = EMathOperatorType::MOT_MULTIPLY;
@@ -69,7 +69,7 @@ public:
     { 
         if (lhs.m_iOperatorPrecedence == rhs.m_iOperatorPrecedence)
         {
-            return rhs.m_eOperatorAssociativity == EMathOperatorAssociativity::MOA_RIGHT;
+            return rhs.m_eOperatorAssociativity == EMathOperatorAssociativity::MOA_LEFT;
         }
         else
         {
@@ -115,6 +115,20 @@ public:
         }
         return 0.0;
     }
+
+
+    bool IsOpenBrace() const
+    {
+        return m_eOperatorType == EMathOperatorType::MOT_BRACE_OPEN;
+    }
+
+
+
+    bool IsCloseBrace() const
+    {
+        return m_eOperatorType == EMathOperatorType::MOT_BRACE_CLOSE;
+    }
+
 
 private:
     EMathOperatorType           m_eOperatorType;

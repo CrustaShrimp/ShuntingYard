@@ -88,10 +88,28 @@ double ShuntingYard(CString strEquation)
         {
             // the token was not a value, it must be an operator
             const CMathTokenOperator Operator(strToken);
-            if (OperatorStack.empty())
+            if (Operator.IsOpenBrace() || OperatorStack.empty())
             {
                 // Add to stack
                 OperatorStack.push(Operator);
+            }
+            else if (Operator.IsCloseBrace())
+            {
+                // Always process until the previous open brace
+                while (!OperatorStack.empty() && !OperatorStack.top().IsOpenBrace())
+                {
+                    assert(NumStack.size() >= 2);
+                    const double dSecondOperand = NumStack.top();
+                    NumStack.pop();
+                    const double dFirstOperand = NumStack.top();
+                    NumStack.pop();
+                    CMathTokenOperator OperatorFromStack = OperatorStack.top();
+                    OperatorStack.pop();
+                    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
+                    NumStack.push(dResult);
+                }
+                // Pop the remaining open brace
+                OperatorStack.pop();
             }
             else
             {

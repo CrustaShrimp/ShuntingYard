@@ -11,9 +11,14 @@
 
 int main(int /*argc*/, char* /*/argv[] */ )
 {
-    // 1) Simple equation
-    CString strEquation("5 + 8 * 10");
+    // 0) Simpest equation
+    CString strEquation("5 + 8 + 10");
     double dResult = ShuntingYard(strEquation);
+    assert(dResult == 23);
+
+    // 1) Simple equation
+    strEquation = ("5 + 8 * 10");
+    dResult = ShuntingYard(strEquation);
     assert(dResult == 85);
 
     // 2) Simple equation with and without spaces
