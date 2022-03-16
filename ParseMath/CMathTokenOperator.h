@@ -129,10 +129,18 @@ public:
         return m_eOperatorType == EMathOperatorType::MOT_BRACE_CLOSE;
     }
 
+    bool IsMinus() const
+    {
+        return m_eOperatorType == EMathOperatorType::MOT_SUBTRACT;
+    }
 
 private:
     EMathOperatorType           m_eOperatorType;
     int                         m_iOperatorPrecedence;
     EMathOperatorAssociativity  m_eOperatorAssociativity;
+public:
+
+
+
 };
 

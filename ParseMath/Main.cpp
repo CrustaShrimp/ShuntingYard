@@ -36,6 +36,11 @@ int main(int /*argc*/, char* /*/argv[] */ )
     dResult = ShuntingYard(strEquation);
     assert(dResult == 181);
 
+    // 4.1) Equation with double power
+    strEquation = ("5^3^2");
+    dResult = ShuntingYard(strEquation);
+    assert(dResult == 1953125);
+
     // 5) Equation with braces
     strEquation = ("(12+5)*8^2");
     dResult = ShuntingYard(strEquation);
@@ -57,18 +62,18 @@ int main(int /*argc*/, char* /*/argv[] */ )
     assert(dResult == -58);
 
     // 8) Equation with negative numbers pt 2
-    strEquation = ("-8*5--6*3");
+    strEquation = ("-8*5--6*-3");
     dResult = ShuntingYard(strEquation);
     assert(dResult == -58);
 
-    // 8) Invalid equations and operators...
-    strEquation = ("456&9");
-    dResult = ShuntingYard(strEquation);
-    // Operator not supported
-
-    strEquation = ("456|9");
-    dResult = ShuntingYard(strEquation);
-    // Operator not supported
+    //// 8) Invalid equations and operators...
+    //strEquation = ("456&9");
+    //dResult = ShuntingYard(strEquation);
+    //// Operator not supported
+    //
+    //strEquation = ("456|9");
+    //dResult = ShuntingYard(strEquation);
+    //// Operator not supported
 
     strEquation = ("456**9");
     dResult = ShuntingYard(strEquation);

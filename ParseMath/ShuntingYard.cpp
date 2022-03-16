@@ -4,6 +4,25 @@
 #include <stack>
 #include <string>
 #include <stdexcept>
+
+void ProcessHigherPrecedenceOperators(std::stack<CMathTokenOperator>& OperatorStack, const CMathTokenOperator Operator, std::stack<double>& NumStack)
+{
+    while (!OperatorStack.empty() && Operator < OperatorStack.top())
+    {
+        assert(NumStack.size() >= 2);
+        // Process the stack operator immediately
+        const double dSecondOperand = NumStack.top();
+        NumStack.pop();
+        const double dFirstOperand = NumStack.top();
+        NumStack.pop();
+        CMathTokenOperator OperatorFromStack = OperatorStack.top();
+        OperatorStack.pop();
+        const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
+        NumStack.push(dResult);
+    }
+    OperatorStack.push(Operator);
+}
+
 double ShuntingYard(CString strEquation)
 {
     // Top
@@ -74,6 +93,7 @@ double ShuntingYard(CString strEquation)
     const CString strSeperator = _T(" ");
     int iPosition = 0;
     CString strToken;
+    bool bPreviousTokenWasValue = false;
 
     strToken = strEquation.Tokenize(strSeperator, iPosition);
     while (!strToken.IsEmpty())
@@ -83,13 +103,20 @@ double ShuntingYard(CString strEquation)
         {
             const double dValue = std::stod(strToken.GetString());
             NumStack.push(dValue * dValueModifier);
+            dValueModifier = 1.0;
+            bPreviousTokenWasValue = true;
         }
         catch (const std::invalid_argument&)
         {
             // the token was not a value, it must be an operator
             const CMathTokenOperator Operator(strToken);
-            if (Operator.IsOpenBrace() || OperatorStack.empty())
+            if (Operator.IsOpenBrace())
             {
+                // Check previous token, if it is not an operator we are missing an operator, so assume it is a multiplication: 4(5+3) = 4 * (5 + 3)
+                if (bPreviousTokenWasValue && !NumStack.empty())
+                {
+                    OperatorStack.push(CMathTokenOperator(_T("*")));
+                }
                 // Add to stack
                 OperatorStack.push(Operator);
             }
@@ -111,24 +138,24 @@ double ShuntingYard(CString strEquation)
                 // Pop the remaining open brace
                 OperatorStack.pop();
             }
+            else if (Operator.IsMinus())
+            {
+                // Check previous token, if it is an operator we are not an operator but part of a negative number
+                if (!bPreviousTokenWasValue)
+                {
+                    dValueModifier *= -1.0;
+                }
+                else
+                {
+                    // Add to stack
+                    ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
+                }
+            }
             else
             {
-                while (!OperatorStack.empty() && Operator < OperatorStack.top())
-                {
-                    assert(NumStack.size() >= 2);
-                    // Process the stack operator immediately
-                    const double dSecondOperand = NumStack.top();
-                    NumStack.pop();
-                    const double dFirstOperand = NumStack.top();
-                    NumStack.pop();
-                    CMathTokenOperator OperatorFromStack = OperatorStack.top();
-                    OperatorStack.pop();
-                    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
-                    NumStack.push(dResult);
-                }
-                OperatorStack.push(Operator);
+                ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
             }
-            
+            bPreviousTokenWasValue = false;
         }
         // Get next token.
         strToken = strEquation.Tokenize(strSeperator, iPosition);
