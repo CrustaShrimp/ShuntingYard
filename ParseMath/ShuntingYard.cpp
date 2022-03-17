@@ -4,24 +4,46 @@
 #include <stack>
 #include <string>
 #include <stdexcept>
+#include <iostream>
+
+void ProcessOperatorFromStack(std::stack<double>& NumStack, std::stack<CMathTokenOperator>& OperatorStack)
+{
+    assert(NumStack.size() >= 2);
+    // Process the stack operator immediately
+    const double dSecondOperand = NumStack.top();
+    NumStack.pop();
+    const double dFirstOperand = NumStack.top();
+    NumStack.pop();
+    const CMathTokenOperator OperatorFromStack = OperatorStack.top();
+    OperatorStack.pop();
+    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
+    NumStack.push(dResult);
+}
 
 void ProcessHigherPrecedenceOperators(std::stack<CMathTokenOperator>& OperatorStack, const CMathTokenOperator Operator, std::stack<double>& NumStack)
 {
     while (!OperatorStack.empty() && Operator < OperatorStack.top())
     {
-        assert(NumStack.size() >= 2);
-        // Process the stack operator immediately
-        const double dSecondOperand = NumStack.top();
-        NumStack.pop();
-        const double dFirstOperand = NumStack.top();
-        NumStack.pop();
-        CMathTokenOperator OperatorFromStack = OperatorStack.top();
-        OperatorStack.pop();
-        const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
-        NumStack.push(dResult);
+        ProcessOperatorFromStack(NumStack, OperatorStack);
     }
     OperatorStack.push(Operator);
 }
+
+int CharacterCount(const CString& strSearchString, const LPCTSTR SearchChar)
+{
+    if (strSearchString.IsEmpty() || L"" == SearchChar)
+    {
+        return 0;
+    }
+    int nFind = -1;
+    int nCount = 0;
+    while (-1 != (nFind = strSearchString.Find(SearchChar, nFind + 1)))
+    {
+        nCount++;
+    }
+    return nCount;
+}
+
 
 double ShuntingYard(CString strEquation)
 {
@@ -79,7 +101,21 @@ double ShuntingYard(CString strEquation)
     std::stack<double>                      NumStack;
     std::stack<CMathTokenOperator>          OperatorStack;
     double                                  dValueModifier = 1.0;
-    
+
+    // Step 0: validate braces
+    {
+        const int iNumberOfOpenBraces       = CharacterCount(strEquation, _T("("));
+        const int iNumberOfClosingBraces    = CharacterCount(strEquation, _T(")"));
+        if (iNumberOfOpenBraces != iNumberOfClosingBraces)
+        {
+            // Problem in equation, missing ( or )
+            const CString strMissingOpen = iNumberOfOpenBraces < iNumberOfClosingBraces ? _T("open") : _T("close");
+            const CString strWarningText (_T("Missing ") + strMissingOpen + _T(" brace in equation, not able to process"));
+            std::wcout << strWarningText.GetString();
+            return 0.0;
+        }
+    }
+
     // Step 1: Add spaces
     strEquation.Replace(_T("^"), _T(" ^ "));
     strEquation.Replace(_T("("), _T(" ( "));
@@ -119,24 +155,18 @@ double ShuntingYard(CString strEquation)
                 }
                 // Add to stack
                 OperatorStack.push(Operator);
+                bPreviousTokenWasValue = false;
             }
             else if (Operator.IsCloseBrace())
             {
                 // Always process until the previous open brace
                 while (!OperatorStack.empty() && !OperatorStack.top().IsOpenBrace())
                 {
-                    assert(NumStack.size() >= 2);
-                    const double dSecondOperand = NumStack.top();
-                    NumStack.pop();
-                    const double dFirstOperand = NumStack.top();
-                    NumStack.pop();
-                    CMathTokenOperator OperatorFromStack = OperatorStack.top();
-                    OperatorStack.pop();
-                    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
-                    NumStack.push(dResult);
+                    ProcessOperatorFromStack(NumStack, OperatorStack);
                 }
                 // Pop the remaining open brace
                 OperatorStack.pop();
+                bPreviousTokenWasValue = true; // A bit weird, but since the brace is computed, a value is set last
             }
             else if (Operator.IsMinus())
             {
@@ -149,13 +179,19 @@ double ShuntingYard(CString strEquation)
                 {
                     // Add to stack
                     ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
+                    bPreviousTokenWasValue = false;
                 }
             }
             else
             {
-                ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
+                // Check whether the previous token was a value, if not we have an incorrect equation
+                // Best guess: just ignore the token and hope for the best
+                if (bPreviousTokenWasValue)
+                {
+                    ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
+                    bPreviousTokenWasValue = false;
+                }
             }
-            bPreviousTokenWasValue = false;
         }
         // Get next token.
         strToken = strEquation.Tokenize(strSeperator, iPosition);
@@ -163,15 +199,7 @@ double ShuntingYard(CString strEquation)
     // Done processing the tokens, now process the remaining operator stack
     while (!OperatorStack.empty())
     {
-        const CMathTokenOperator Operator = OperatorStack.top();
-        OperatorStack.pop();
-
-        const double dSecondOperand = NumStack.top();
-        NumStack.pop();
-        const double dFirstOperand = NumStack.top();
-        NumStack.pop();
-        const double dResult = Operator.ProcessOperator(dFirstOperand, dSecondOperand);
-        NumStack.push(dResult);
+        ProcessOperatorFromStack(NumStack, OperatorStack);
     }
     assert(NumStack.size() == 1);
     return NumStack.top();

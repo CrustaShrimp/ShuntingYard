@@ -77,6 +77,7 @@ int main(int /*argc*/, char* /*/argv[] */ )
 
     strEquation = ("456**9");
     dResult = ShuntingYard(strEquation);
+    assert(dResult == 4104);
     // Double operator, ignored
 
     strEquation = ("456^(9+5");
