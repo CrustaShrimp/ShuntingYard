@@ -1,27 +1,11 @@
 #pragma once
 #include <assert.h>
 #include <cmath>
+#include <iostream>
 
 class CMathTokenOperator
 {
 public:
-    enum class EMathOperatorType
-    {
-        MOT_EXPONENT,
-        MOT_BRACE_OPEN,
-        MOT_BRACE_CLOSE,
-        MOT_MULTIPLY,
-        MOT_DIVIDE,
-        MOT_ADD,
-        MOT_SUBTRACT,
-        MOT_LAST
-    };
-
-    enum class EMathOperatorAssociativity
-    {
-        MOA_LEFT,
-        MOA_RIGHT
-    };
 
     CMathTokenOperator(const CString& strToken)
         :m_eOperatorType(EMathOperatorType::MOT_LAST)
@@ -75,7 +59,6 @@ public:
         {
             return lhs.m_iOperatorPrecedence < rhs.m_iOperatorPrecedence;
         }
-
     }
 
     double ProcessOperator(const double dFirst, const double dSecond) const
@@ -84,31 +67,25 @@ public:
         {
         case EMathOperatorType::MOT_EXPONENT:
             return std::pow(dFirst, dSecond);
-            break;
         case EMathOperatorType::MOT_BRACE_OPEN:
         case EMathOperatorType::MOT_BRACE_CLOSE:
-            //throw std::logic_error("The method or operation is not implemented.");
             break;
         case EMathOperatorType::MOT_MULTIPLY:
             return dFirst * dSecond;
-            break;
         case EMathOperatorType::MOT_DIVIDE:
-            assert(dSecond != 0.0);
             if (dSecond != 0.0)
             {
                 return dFirst / dSecond;
             }
             else
             {
+                std::wcout << _T("A divide-by-zero is found, no valid answer is available");
                 return 0.0;
             }
-            break;
         case EMathOperatorType::MOT_ADD:
             return dFirst + dSecond;
-            break;
         case EMathOperatorType::MOT_SUBTRACT:
             return dFirst - dSecond;
-            break;
         default:
             assert(false);
             break;
@@ -116,13 +93,10 @@ public:
         return 0.0;
     }
 
-
     bool IsOpenBrace() const
     {
         return m_eOperatorType == EMathOperatorType::MOT_BRACE_OPEN;
     }
-
-
 
     bool IsCloseBrace() const
     {
@@ -134,13 +108,53 @@ public:
         return m_eOperatorType == EMathOperatorType::MOT_SUBTRACT;
     }
 
+
+    CString GetStr() const
+    {
+        switch (m_eOperatorType)
+        {
+        case CMathTokenOperator::EMathOperatorType::MOT_EXPONENT:
+            return _T("^");
+        case CMathTokenOperator::EMathOperatorType::MOT_BRACE_OPEN:
+            return _T("(");
+        case CMathTokenOperator::EMathOperatorType::MOT_BRACE_CLOSE:
+            return _T(")");
+        case CMathTokenOperator::EMathOperatorType::MOT_MULTIPLY:
+            return _T("*");
+        case CMathTokenOperator::EMathOperatorType::MOT_DIVIDE:
+            return _T("/");
+        case CMathTokenOperator::EMathOperatorType::MOT_ADD:
+            return _T("+");
+        case CMathTokenOperator::EMathOperatorType::MOT_SUBTRACT:
+            return _T("-");
+        default:
+            assert(false);
+            return _T("Undefined Operator");
+            break;
+        }
+    }
+
 private:
+    enum class EMathOperatorType
+    {
+        MOT_EXPONENT,
+        MOT_BRACE_OPEN,
+        MOT_BRACE_CLOSE,
+        MOT_MULTIPLY,
+        MOT_DIVIDE,
+        MOT_ADD,
+        MOT_SUBTRACT,
+        MOT_LAST
+    };
+
+    enum class EMathOperatorAssociativity
+    {
+        MOA_LEFT,
+        MOA_RIGHT
+    };
+
     EMathOperatorType           m_eOperatorType;
     int                         m_iOperatorPrecedence;
     EMathOperatorAssociativity  m_eOperatorAssociativity;
-public:
-
-
-
 };
 

@@ -1,33 +1,9 @@
 #pragma once
 #include "ShuntingYard.h"
-#include "CMathTokenOperator.h"
-#include <stack>
+
 #include <string>
 #include <stdexcept>
 #include <iostream>
-
-void ProcessOperatorFromStack(std::stack<double>& NumStack, std::stack<CMathTokenOperator>& OperatorStack)
-{
-    assert(NumStack.size() >= 2);
-    // Process the stack operator immediately
-    const double dSecondOperand = NumStack.top();
-    NumStack.pop();
-    const double dFirstOperand = NumStack.top();
-    NumStack.pop();
-    const CMathTokenOperator OperatorFromStack = OperatorStack.top();
-    OperatorStack.pop();
-    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
-    NumStack.push(dResult);
-}
-
-void ProcessHigherPrecedenceOperators(std::stack<CMathTokenOperator>& OperatorStack, const CMathTokenOperator Operator, std::stack<double>& NumStack)
-{
-    while (!OperatorStack.empty() && Operator < OperatorStack.top())
-    {
-        ProcessOperatorFromStack(NumStack, OperatorStack);
-    }
-    OperatorStack.push(Operator);
-}
 
 int CharacterCount(const CString& strSearchString, const LPCTSTR SearchChar)
 {
@@ -45,12 +21,8 @@ int CharacterCount(const CString& strSearchString, const LPCTSTR SearchChar)
 }
 
 
-double ShuntingYard(CString strEquation)
+double CShuntingYard::Compute(const CString& strEquation) noexcept(false)
 {
-    // Top
-    // Push
-    // Pop
-    
     /* Calculation examples:
     * 5+8*-7
     * 7 * (5 + 8)
@@ -97,10 +69,11 @@ double ShuntingYard(CString strEquation)
     ** Smiley, you are done! :)
     *
     */
-    
-    std::stack<double>                      NumStack;
-    std::stack<CMathTokenOperator>          OperatorStack;
-    double                                  dValueModifier = 1.0;
+
+    m_NumStack.clear();
+    m_OperatorStack.clear();
+    m_bNextValueNegative = false;
+    const LPCTSTR pszOpenCloseLine = _T("****************************************************************************\n");
 
     // Step 0: validate braces
     {
@@ -110,36 +83,43 @@ double ShuntingYard(CString strEquation)
         {
             // Problem in equation, missing ( or )
             const CString strMissingOpen = iNumberOfOpenBraces < iNumberOfClosingBraces ? _T("open") : _T("close");
-            const CString strWarningText (_T("Missing ") + strMissingOpen + _T(" brace in equation, not able to process"));
-            std::wcout << strWarningText.GetString();
+            std::wcout << _T("Missing ") << strMissingOpen.GetString() << _T(" brace in equation ") << strEquation.GetString() << _T(", not able to process this equation\n\n");
             return 0.0;
         }
     }
 
+    // Make a local copy of the string, which we can edit
+    CString strEquationWithSpacing(strEquation);
+
     // Step 1: Add spaces
-    strEquation.Replace(_T("^"), _T(" ^ "));
-    strEquation.Replace(_T("("), _T(" ( "));
-    strEquation.Replace(_T(")"), _T(" ) "));
-    strEquation.Replace(_T("*"), _T(" * "));
-    strEquation.Replace(_T("/"), _T(" / "));
-    strEquation.Replace(_T("+"), _T(" + "));
-    strEquation.Replace(_T("-"), _T(" - "));
+    strEquationWithSpacing.Replace(_T("^"), _T(" ^ "));
+    strEquationWithSpacing.Replace(_T("("), _T(" ( "));
+    strEquationWithSpacing.Replace(_T(")"), _T(" ) "));
+    strEquationWithSpacing.Replace(_T("*"), _T(" * "));
+    strEquationWithSpacing.Replace(_T("/"), _T(" / "));
+    strEquationWithSpacing.Replace(_T("+"), _T(" + "));
+    strEquationWithSpacing.Replace(_T("-"), _T(" - "));
+
+    {
+        std::wcout << pszOpenCloseLine << _T("Equation to evaluate:") << strEquationWithSpacing.GetString() << _T("\n");
+    }
 
     // Step 2: Tokenize
-    const CString strSeperator = _T(" ");
     int iPosition = 0;
     CString strToken;
     bool bPreviousTokenWasValue = false;
 
-    strToken = strEquation.Tokenize(strSeperator, iPosition);
+    strToken = strEquationWithSpacing.Tokenize(m_strSeperator, iPosition);
     while (!strToken.IsEmpty())
     {
         // Test whether the token is a value or operator
         try
         {
             const double dValue = std::stod(strToken.GetString());
-            NumStack.push(dValue * dValueModifier);
-            dValueModifier = 1.0;
+            // If this has succeeded, we have a value which we can push to the stack, taking into account the optional previous value modifier (-1)
+            m_NumStack.push_back(m_bNextValueNegative ? -dValue : dValue);
+            // Reset the value modifier to +
+            m_bNextValueNegative = false;
             bPreviousTokenWasValue = true;
         }
         catch (const std::invalid_argument&)
@@ -149,23 +129,23 @@ double ShuntingYard(CString strEquation)
             if (Operator.IsOpenBrace())
             {
                 // Check previous token, if it is not an operator we are missing an operator, so assume it is a multiplication: 4(5+3) = 4 * (5 + 3)
-                if (bPreviousTokenWasValue && !NumStack.empty())
+                if (bPreviousTokenWasValue && !m_NumStack.empty())
                 {
-                    OperatorStack.push(CMathTokenOperator(_T("*")));
+                    m_OperatorStack.push_back(CMathTokenOperator(_T("*")));
                 }
                 // Add to stack
-                OperatorStack.push(Operator);
+                m_OperatorStack.push_back(Operator);
                 bPreviousTokenWasValue = false;
             }
             else if (Operator.IsCloseBrace())
             {
                 // Always process until the previous open brace
-                while (!OperatorStack.empty() && !OperatorStack.top().IsOpenBrace())
+                while (!m_OperatorStack.empty() && !m_OperatorStack.back().IsOpenBrace())
                 {
-                    ProcessOperatorFromStack(NumStack, OperatorStack);
+                    ProcessLastOperatorFromStack();
                 }
                 // Pop the remaining open brace
-                OperatorStack.pop();
+                m_OperatorStack.pop_back();
                 bPreviousTokenWasValue = true; // A bit weird, but since the brace is computed, a value is set last
             }
             else if (Operator.IsMinus())
@@ -173,12 +153,13 @@ double ShuntingYard(CString strEquation)
                 // Check previous token, if it is an operator we are not an operator but part of a negative number
                 if (!bPreviousTokenWasValue)
                 {
-                    dValueModifier *= -1.0;
+                    // Invert the bool, since two negatives will lead to a positive
+                    m_bNextValueNegative = !m_bNextValueNegative;
                 }
                 else
                 {
                     // Add to stack
-                    ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
+                    AddToStackAndProcessHigherPrecedenceOperators(Operator);
                     bPreviousTokenWasValue = false;
                 }
             }
@@ -188,19 +169,64 @@ double ShuntingYard(CString strEquation)
                 // Best guess: just ignore the token and hope for the best
                 if (bPreviousTokenWasValue)
                 {
-                    ProcessHigherPrecedenceOperators(OperatorStack, Operator, NumStack);
+                    AddToStackAndProcessHigherPrecedenceOperators(Operator);
                     bPreviousTokenWasValue = false;
                 }
             }
         }
+        // Print the current numstack and operator stack:
+        PrintStacks();
         // Get next token.
-        strToken = strEquation.Tokenize(strSeperator, iPosition);
+        strToken = strEquationWithSpacing.Tokenize(m_strSeperator, iPosition);
     }
     // Done processing the tokens, now process the remaining operator stack
-    while (!OperatorStack.empty())
+    while (!m_OperatorStack.empty())
     {
-        ProcessOperatorFromStack(NumStack, OperatorStack);
+        ProcessLastOperatorFromStack();
     }
-    assert(NumStack.size() == 1);
-    return NumStack.top();
+    assert(m_NumStack.size() == 1);
+    std::wcout << _T("The result from the equation ") << strEquationWithSpacing.GetString() << _T(" is ") << m_NumStack[0] << _T("\n") << pszOpenCloseLine << _T("\n");
+
+    return m_NumStack[0];
+}
+
+void CShuntingYard::ProcessLastOperatorFromStack()
+{
+    assert(m_NumStack.size() >= 2);
+    // Process the stack operator immediately
+    const double dSecondOperand = m_NumStack.back();
+    m_NumStack.pop_back();
+    const double dFirstOperand = m_NumStack.back();
+    m_NumStack.pop_back();
+    const CMathTokenOperator OperatorFromStack = m_OperatorStack.back();
+    m_OperatorStack.pop_back();
+    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
+    m_NumStack.push_back(dResult);
+
+    std::wcout << _T("Processed operation ") << dFirstOperand << OperatorFromStack.GetStr().GetString() << dSecondOperand << _T(", resulting in value ") << dResult << _T("\n") << _T("The current stacks are:\n");
+    PrintStacks();
+}
+
+void CShuntingYard::AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator)
+{
+    while (!m_OperatorStack.empty() && Operator < m_OperatorStack.back())
+    {
+        ProcessLastOperatorFromStack();
+    }
+    m_OperatorStack.push_back(Operator);
+}
+
+void CShuntingYard::PrintStacks() const
+{
+    std::wcout << _T("Current numstack:");
+    for (const double dNum : m_NumStack)
+    {
+        std::wcout << dNum << _T(" ");
+    }
+    std::wcout << _T("\n") << _T("Current operator stack:");
+    for (const CMathTokenOperator& Operator : m_OperatorStack)
+    {
+        std::wcout << Operator.GetStr().GetString() << _T(" ");
+    }
+    std::wcout << _T("\n\n");
 }
