@@ -6,13 +6,14 @@
 class CMathTokenOperator
 {
 public:
+    static std::string GetSupportedTokens() { return "()^*/+-";}
 
-    explicit CMathTokenOperator(const std::string& strToken)
+    explicit CMathTokenOperator(const char32_t Token)
         :m_eOperatorType(EMathOperatorType::MOT_LAST)
         ,m_eOperatorAssociativity(EMathOperatorAssociativity::MOA_LEFT)
         ,m_iOperatorPrecedence(-1)
     {
-        switch (strToken[0])
+        switch (Token)
         {
         case '(':
             m_eOperatorType = EMathOperatorType::MOT_BRACE_OPEN;

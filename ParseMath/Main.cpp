@@ -10,9 +10,14 @@
 int main(int /*argc*/, char** /*/argv[] */ )
 {
     CShuntingYard Algorithm;
-    // 0) Simpest equation
-    std::string strEquation("5 + 8 + 10");
+    //Basic: just a number
+    std::string strEquation("5");
     double dResult = Algorithm.Compute(strEquation);
+    assert(dResult == 5);
+
+    // 0) Simpest equation
+    strEquation = ("5 + 8 + 10");
+    dResult = Algorithm.Compute(strEquation);
     assert(dResult == 23);
 
     // 1) Simple equation
@@ -45,7 +50,12 @@ int main(int /*argc*/, char** /*/argv[] */ )
     dResult = Algorithm.Compute(strEquation);
     assert(dResult == 1088);
 
-    // 5.2) Equation with double braces
+    // 5).2 Equation with braces
+    strEquation = ("(12+5)+8^2");
+    dResult = Algorithm.Compute(strEquation);
+    assert(dResult == 81);
+
+    // 5.3) Equation with double braces
     strEquation = ("(12+5*(3+3))*8^2");
     dResult = Algorithm.Compute(strEquation);
     assert(dResult == 2688);
@@ -65,14 +75,14 @@ int main(int /*argc*/, char** /*/argv[] */ )
     dResult = Algorithm.Compute(strEquation);
     assert(dResult == -58);
 
-    //// 8) Invalid equations and operators...
-    //strEquation = ("456&9");
-    //dResult = ShuntingYard(strEquation);
-    //// Operator not supported
-    //
-    //strEquation = ("456|9");
-    //dResult = ShuntingYard(strEquation);
-    //// Operator not supported
+    // 8) Invalid equations and operators...
+    strEquation = ("456&9");
+    dResult = Algorithm.Compute(strEquation);
+    // Operator not supported
+
+    strEquation = ("456|9");
+    dResult = Algorithm.Compute(strEquation);
+    // Operator not supported
 
     strEquation = ("456**9");
     dResult = Algorithm.Compute(strEquation);

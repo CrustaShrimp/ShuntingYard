@@ -5,6 +5,8 @@
 class CShuntingYard
 {
 public:
+    void ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number);
+
     double Compute(const std::string& strEquation) noexcept(false);
 
 private:

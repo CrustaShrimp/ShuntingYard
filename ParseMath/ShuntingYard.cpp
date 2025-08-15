@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <iostream>
 
-int CharacterCount(const std::string& strSearchString, const char32_t SearchChar)
+int CharacterCount(const std::string& strSearchString, const std::string::value_type SearchChar)
 {
     if (strSearchString.empty() || SearchChar == '\0')
     {
@@ -14,13 +14,29 @@ int CharacterCount(const std::string& strSearchString, const char32_t SearchChar
     }
     int nFind = -1;
     int nCount = 0;
-    while (std::string::npos != (nFind = strSearchString.find(SearchChar, nFind + 1)))
+    while (std::string::npos != (nFind = static_cast<int>(strSearchString.find(SearchChar, nFind + 1))))
     {
         nCount++;
     }
     return nCount;
 }
 
+
+void CShuntingYard::ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number) {
+    try
+    {
+        const double dValue = std::stod(Number);
+        // If this has succeeded, we have a value which we can push to the stack, taking into account the optional previous value modifier (-1)
+        m_NumStack.push_back(m_bNextValueNegative ? -dValue : dValue);
+        // Reset the value modifier to +
+        m_bNextValueNegative = false;
+        bPreviousTokenWasValue = true;
+    }
+    catch (const std::invalid_argument&) {
+        // TODO Handle exception
+        assert(false);
+    }
+}
 
 double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
 {
@@ -91,96 +107,81 @@ double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
             return 0.0;
         }
     }
-
-    // Make a local copy of the string, which we can edit
-    std::string strEquationWithSpacing(strEquation);
-
-    // Step 1: Add spaces
-    // std::ranges::replace(strEquationWithSpacing, ("^"), (" ^ "));
-    // std::ranges::replace(strEquationWithSpacing, ("("), (" ( "));
-    // std::ranges::replace(strEquationWithSpacing, (")"), (" ) "));
-    // std::ranges::replace(strEquationWithSpacing, ("*"), (" * "));
-    // std::ranges::replace(strEquationWithSpacing, ("/"), (" / "));
-    // std::ranges::replace(strEquationWithSpacing, ("+"), (" + "));
-    // std::ranges::replace(strEquationWithSpacing, ("-"), (" - "));
-
     {
-        std::wcout << OpenCloseLine.c_str() << ("Equation to evaluate:") << strEquationWithSpacing.c_str() << ("\n");
+        std::wcout << OpenCloseLine.c_str() << ("Equation to evaluate:") << strEquation.c_str() << ("\n");
     }
 
     // Step 2: Tokenize
-    int iPosition = 0;
+    size_t StartPos = 0;
     bool bPreviousTokenWasValue = false;
 
-    auto strToken = std::strtok(strEquationWithSpacing.data(), m_strSeperator.c_str());
-    while (strToken)
+    size_t TokenPos = strEquation.find_first_of(CMathTokenOperator::GetSupportedTokens(), StartPos);
+    while (TokenPos != std::string::npos)
     {
-        // Test whether the token is a value or operator
-        try
-        {
-            const double dValue = std::stod(strToken);
-            // If this has succeeded, we have a value which we can push to the stack, taking into account the optional previous value modifier (-1)
-            m_NumStack.push_back(m_bNextValueNegative ? -dValue : dValue);
-            // Reset the value modifier to +
-            m_bNextValueNegative = false;
-            bPreviousTokenWasValue = true;
+        std::string Number = strEquation.substr(StartPos, TokenPos - StartPos);
+        if (!Number.empty()) {
+            ProcessNumber(bPreviousTokenWasValue, Number);
         }
-        catch (const std::invalid_argument&)
+        StartPos = std::min(TokenPos + 1, strEquation.size());
+        auto OperatorToken = strEquation.at(TokenPos);
+        // the token was not a value, it must be an operator
+        const CMathTokenOperator Operator(OperatorToken);
+        if (Operator.IsOpenBrace())
         {
-            // the token was not a value, it must be an operator
-            const CMathTokenOperator Operator(strToken);
-            if (Operator.IsOpenBrace())
+            // Check previous token, if it is not an operator we are missing an operator, so assume it is a multiplication: 4(5+3) = 4 * (5 + 3)
+            if (bPreviousTokenWasValue && !m_NumStack.empty())
             {
-                // Check previous token, if it is not an operator we are missing an operator, so assume it is a multiplication: 4(5+3) = 4 * (5 + 3)
-                if (bPreviousTokenWasValue && !m_NumStack.empty())
-                {
-                    m_OperatorStack.push_back(CMathTokenOperator(("*")));
-                }
-                // Add to stack
-                m_OperatorStack.push_back(Operator);
-                bPreviousTokenWasValue = false;
+                m_OperatorStack.emplace_back('*');
             }
-            else if (Operator.IsCloseBrace())
+            // Add to stack
+            m_OperatorStack.push_back(Operator);
+            bPreviousTokenWasValue = false;
+        }
+        else if (Operator.IsCloseBrace())
+        {
+            // Always process until the previous open brace
+            while (!m_OperatorStack.empty() && !m_OperatorStack.back().IsOpenBrace())
             {
-                // Always process until the previous open brace
-                while (!m_OperatorStack.empty() && !m_OperatorStack.back().IsOpenBrace())
-                {
-                    ProcessLastOperatorFromStack();
-                }
-                // Pop the remaining open brace
-                m_OperatorStack.pop_back();
-                bPreviousTokenWasValue = true; // A bit weird, but since the brace is computed, a value is set last
+                ProcessLastOperatorFromStack();
             }
-            else if (Operator.IsMinus())
+            // Pop the remaining open brace
+            m_OperatorStack.pop_back();
+            bPreviousTokenWasValue = true; // A bit weird, but since the brace is computed, a value is set last
+        }
+        else if (Operator.IsMinus())
+        {
+            // Check previous token, if it is an operator we are not an operator but part of a negative number
+            if (!bPreviousTokenWasValue)
             {
-                // Check previous token, if it is an operator we are not an operator but part of a negative number
-                if (!bPreviousTokenWasValue)
-                {
-                    // Invert the bool, since two negatives will lead to a positive
-                    m_bNextValueNegative = !m_bNextValueNegative;
-                }
-                else
-                {
-                    // Add to stack
-                    AddToStackAndProcessHigherPrecedenceOperators(Operator);
-                    bPreviousTokenWasValue = false;
-                }
+                // Invert the bool, since two negatives will lead to a positive
+                m_bNextValueNegative = !m_bNextValueNegative;
             }
             else
             {
-                // Check whether the previous token was a value, if not we have an incorrect equation
-                // Best guess: just ignore the token and hope for the best
-                if (bPreviousTokenWasValue)
-                {
-                    AddToStackAndProcessHigherPrecedenceOperators(Operator);
-                    bPreviousTokenWasValue = false;
-                }
+                // Add to stack
+                AddToStackAndProcessHigherPrecedenceOperators(Operator);
+                bPreviousTokenWasValue = false;
+            }
+        }
+        else
+        {
+            // Check whether the previous token was a value, if not we have an incorrect equation
+            // Best guess: just ignore the token and hope for the best
+            if (bPreviousTokenWasValue)
+            {
+                AddToStackAndProcessHigherPrecedenceOperators(Operator);
+                bPreviousTokenWasValue = false;
             }
         }
         // Print the current numstack and operator stack:
         PrintStacks();
         // Get next token.
-        strToken = std::strtok(nullptr, m_strSeperator.c_str());
+        TokenPos = strEquation.find_first_of(CMathTokenOperator::GetSupportedTokens(), StartPos);
+    }
+    if (StartPos < strEquation.size()) {
+        // one more number to process
+        std::string Number = strEquation.substr(StartPos, strEquation.size() - StartPos);
+        ProcessNumber(bPreviousTokenWasValue, Number);
     }
     // Done processing the tokens, now process the remaining operator stack
     while (!m_OperatorStack.empty())
