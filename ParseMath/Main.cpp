@@ -1,19 +1,17 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
-#include <atlstr.h>
-#include <tchar.h>
 
 #include "CMathTokenOperator.h"
 #include "ShuntingYard.h"
 
 
 
-int main(int /*argc*/, char* /*/argv[] */ )
+int main(int /*argc*/, char** /*/argv[] */ )
 {
     CShuntingYard Algorithm;
     // 0) Simpest equation
-    CString strEquation("5 + 8 + 10");
+    std::string strEquation("5 + 8 + 10");
     double dResult = Algorithm.Compute(strEquation);
     assert(dResult == 23);
 

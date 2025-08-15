@@ -1,5 +1,5 @@
 #pragma once
-#include <assert.h>
+#include <cassert>
 #include <cmath>
 #include <iostream>
 
@@ -7,7 +7,7 @@ class CMathTokenOperator
 {
 public:
 
-    CMathTokenOperator(const CString& strToken)
+    explicit CMathTokenOperator(const std::string& strToken)
         :m_eOperatorType(EMathOperatorType::MOT_LAST)
         ,m_eOperatorAssociativity(EMathOperatorAssociativity::MOA_LEFT)
         ,m_iOperatorPrecedence(-1)
@@ -79,7 +79,7 @@ public:
             }
             else
             {
-                std::wcout << _T("A divide-by-zero is found, no valid answer is available");
+                std::wcout << ("A divide-by-zero is found, no valid answer is available");
                 return 0.0;
             }
         case EMathOperatorType::MOT_ADD:
@@ -109,27 +109,27 @@ public:
     }
 
 
-    CString GetStr() const
+    std::string GetStr() const
     {
         switch (m_eOperatorType)
         {
         case CMathTokenOperator::EMathOperatorType::MOT_EXPONENT:
-            return _T("^");
+            return {'^'};
         case CMathTokenOperator::EMathOperatorType::MOT_BRACE_OPEN:
-            return _T("(");
+            return {'('};
         case CMathTokenOperator::EMathOperatorType::MOT_BRACE_CLOSE:
-            return _T(")");
+            return {')'};
         case CMathTokenOperator::EMathOperatorType::MOT_MULTIPLY:
-            return _T("*");
+            return {'*'};
         case CMathTokenOperator::EMathOperatorType::MOT_DIVIDE:
-            return _T("/");
+            return {'/'};
         case CMathTokenOperator::EMathOperatorType::MOT_ADD:
-            return _T("+");
+            return {'+'};
         case CMathTokenOperator::EMathOperatorType::MOT_SUBTRACT:
-            return _T("-");
+            return {'-'};
         default:
             assert(false);
-            return _T("Undefined Operator");
+            return ("Undefined Operator");
             break;
         }
     }

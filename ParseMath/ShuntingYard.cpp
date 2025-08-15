@@ -1,19 +1,20 @@
-#pragma once
 #include "ShuntingYard.h"
 
+#include <algorithm>
+#include <cstring>
 #include <string>
 #include <stdexcept>
 #include <iostream>
 
-int CharacterCount(const CString& strSearchString, const LPCTSTR SearchChar)
+int CharacterCount(const std::string& strSearchString, const char32_t SearchChar)
 {
-    if (strSearchString.IsEmpty() || L"" == SearchChar)
+    if (strSearchString.empty() || SearchChar == '\0')
     {
         return 0;
     }
     int nFind = -1;
     int nCount = 0;
-    while (-1 != (nFind = strSearchString.Find(SearchChar, nFind + 1)))
+    while (std::string::npos != (nFind = strSearchString.find(SearchChar, nFind + 1)))
     {
         nCount++;
     }
@@ -21,7 +22,7 @@ int CharacterCount(const CString& strSearchString, const LPCTSTR SearchChar)
 }
 
 
-double CShuntingYard::Compute(const CString& strEquation) noexcept(false)
+double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
 {
     /* Calculation examples:
     * 5+8*-7
@@ -69,53 +70,55 @@ double CShuntingYard::Compute(const CString& strEquation) noexcept(false)
     ** Smiley, you are done! :)
     *
     */
-
+    if (strEquation.empty())
+    {
+        return 0.0;
+    }
     m_NumStack.clear();
     m_OperatorStack.clear();
     m_bNextValueNegative = false;
-    const LPCTSTR pszOpenCloseLine = _T("****************************************************************************\n");
+    const std::string OpenCloseLine = ("****************************************************************************\n");
 
     // Step 0: validate braces
     {
-        const int iNumberOfOpenBraces       = CharacterCount(strEquation, _T("("));
-        const int iNumberOfClosingBraces    = CharacterCount(strEquation, _T(")"));
+        const int iNumberOfOpenBraces       = CharacterCount(strEquation, '(');
+        const int iNumberOfClosingBraces    = CharacterCount(strEquation, ')');
         if (iNumberOfOpenBraces != iNumberOfClosingBraces)
         {
             // Problem in equation, missing ( or )
-            const CString strMissingOpen = iNumberOfOpenBraces < iNumberOfClosingBraces ? _T("open") : _T("close");
-            std::wcout << _T("Missing ") << strMissingOpen.GetString() << _T(" brace in equation ") << strEquation.GetString() << _T(", not able to process this equation\n\n");
+            const std::string strMissingOpen = iNumberOfOpenBraces < iNumberOfClosingBraces ? ("open") : ("close");
+            std::wcout << ("Missing ") << strMissingOpen.c_str() << (" brace in equation ") << strEquation.c_str() << (", not able to process this equation\n\n");
             return 0.0;
         }
     }
 
     // Make a local copy of the string, which we can edit
-    CString strEquationWithSpacing(strEquation);
+    std::string strEquationWithSpacing(strEquation);
 
     // Step 1: Add spaces
-    strEquationWithSpacing.Replace(_T("^"), _T(" ^ "));
-    strEquationWithSpacing.Replace(_T("("), _T(" ( "));
-    strEquationWithSpacing.Replace(_T(")"), _T(" ) "));
-    strEquationWithSpacing.Replace(_T("*"), _T(" * "));
-    strEquationWithSpacing.Replace(_T("/"), _T(" / "));
-    strEquationWithSpacing.Replace(_T("+"), _T(" + "));
-    strEquationWithSpacing.Replace(_T("-"), _T(" - "));
+    // std::ranges::replace(strEquationWithSpacing, ("^"), (" ^ "));
+    // std::ranges::replace(strEquationWithSpacing, ("("), (" ( "));
+    // std::ranges::replace(strEquationWithSpacing, (")"), (" ) "));
+    // std::ranges::replace(strEquationWithSpacing, ("*"), (" * "));
+    // std::ranges::replace(strEquationWithSpacing, ("/"), (" / "));
+    // std::ranges::replace(strEquationWithSpacing, ("+"), (" + "));
+    // std::ranges::replace(strEquationWithSpacing, ("-"), (" - "));
 
     {
-        std::wcout << pszOpenCloseLine << _T("Equation to evaluate:") << strEquationWithSpacing.GetString() << _T("\n");
+        std::wcout << OpenCloseLine.c_str() << ("Equation to evaluate:") << strEquationWithSpacing.c_str() << ("\n");
     }
 
     // Step 2: Tokenize
     int iPosition = 0;
-    CString strToken;
     bool bPreviousTokenWasValue = false;
 
-    strToken = strEquationWithSpacing.Tokenize(m_strSeperator, iPosition);
-    while (!strToken.IsEmpty())
+    auto strToken = std::strtok(strEquationWithSpacing.data(), m_strSeperator.c_str());
+    while (strToken)
     {
         // Test whether the token is a value or operator
         try
         {
-            const double dValue = std::stod(strToken.GetString());
+            const double dValue = std::stod(strToken);
             // If this has succeeded, we have a value which we can push to the stack, taking into account the optional previous value modifier (-1)
             m_NumStack.push_back(m_bNextValueNegative ? -dValue : dValue);
             // Reset the value modifier to +
@@ -131,7 +134,7 @@ double CShuntingYard::Compute(const CString& strEquation) noexcept(false)
                 // Check previous token, if it is not an operator we are missing an operator, so assume it is a multiplication: 4(5+3) = 4 * (5 + 3)
                 if (bPreviousTokenWasValue && !m_NumStack.empty())
                 {
-                    m_OperatorStack.push_back(CMathTokenOperator(_T("*")));
+                    m_OperatorStack.push_back(CMathTokenOperator(("*")));
                 }
                 // Add to stack
                 m_OperatorStack.push_back(Operator);
@@ -177,7 +180,7 @@ double CShuntingYard::Compute(const CString& strEquation) noexcept(false)
         // Print the current numstack and operator stack:
         PrintStacks();
         // Get next token.
-        strToken = strEquationWithSpacing.Tokenize(m_strSeperator, iPosition);
+        strToken = std::strtok(nullptr, m_strSeperator.c_str());
     }
     // Done processing the tokens, now process the remaining operator stack
     while (!m_OperatorStack.empty())
@@ -185,14 +188,15 @@ double CShuntingYard::Compute(const CString& strEquation) noexcept(false)
         ProcessLastOperatorFromStack();
     }
     assert(m_NumStack.size() == 1);
-    std::wcout << _T("The result from the equation ") << strEquationWithSpacing.GetString() << _T(" is ") << m_NumStack[0] << _T("\n") << pszOpenCloseLine << _T("\n");
+    std::wcout << ("The result from the equation ") << strEquation.c_str() << (" is ") << m_NumStack[0] << ("\n") << OpenCloseLine.c_str() << ("\n");
 
     return m_NumStack[0];
 }
 
 void CShuntingYard::ProcessLastOperatorFromStack()
 {
-    assert(m_NumStack.size() >= 2);
+    std::size_t NumStackSize = m_NumStack.size();
+    assert(NumStackSize >= 2);
     // Process the stack operator immediately
     const double dSecondOperand = m_NumStack.back();
     m_NumStack.pop_back();
@@ -203,7 +207,7 @@ void CShuntingYard::ProcessLastOperatorFromStack()
     const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
     m_NumStack.push_back(dResult);
 
-    std::wcout << _T("Processed operation ") << dFirstOperand << OperatorFromStack.GetStr().GetString() << dSecondOperand << _T(", resulting in value ") << dResult << _T("\n") << _T("The current stacks are:\n");
+    std::wcout << ("Processed operation ") << dFirstOperand << OperatorFromStack.GetStr().c_str() << dSecondOperand << (", resulting in value ") << dResult << ("\n") << ("The current stacks are:\n");
     PrintStacks();
 }
 
@@ -218,15 +222,15 @@ void CShuntingYard::AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOper
 
 void CShuntingYard::PrintStacks() const
 {
-    std::wcout << _T("Current numstack:");
+    std::wcout << ("Current numstack:");
     for (const double dNum : m_NumStack)
     {
-        std::wcout << dNum << _T(" ");
+        std::wcout << dNum << (" ");
     }
-    std::wcout << _T("\n") << _T("Current operator stack:");
+    std::wcout << ("\n") << ("Current operator stack:");
     for (const CMathTokenOperator& Operator : m_OperatorStack)
     {
-        std::wcout << Operator.GetStr().GetString() << _T(" ");
+        std::wcout << Operator.GetStr().c_str() << (" ");
     }
-    std::wcout << _T("\n\n");
+    std::wcout << ("\n\n");
 }
