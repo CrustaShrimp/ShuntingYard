@@ -1,28 +1,8 @@
 #include "ShuntingYard.h"
 
-#include <algorithm>
-#include <cstring>
-#include <string>
-#include <stdexcept>
-#include <iostream>
+#include <cassert>
 
-int CharacterCount(const std::string& strSearchString, const std::string::value_type SearchChar)
-{
-    if (strSearchString.empty() || SearchChar == '\0')
-    {
-        return 0;
-    }
-    int nFind = -1;
-    int nCount = 0;
-    while (std::string::npos != (nFind = static_cast<int>(strSearchString.find(SearchChar, nFind + 1))))
-    {
-        nCount++;
-    }
-    return nCount;
-}
-
-
-void CShuntingYard::ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number) {
+std::optional<ErrorType> CShuntingYard::ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number) {
     try
     {
         const double dValue = std::stod(Number);
@@ -31,14 +11,14 @@ void CShuntingYard::ProcessNumber(bool &bPreviousTokenWasValue, const std::strin
         // Reset the value modifier to +
         m_bNextValueNegative = false;
         bPreviousTokenWasValue = true;
+        return std::nullopt;
     }
     catch (const std::invalid_argument&) {
-        // TODO Handle exception
-        assert(false);
+        return ErrorType::InvalidNumeric;
     }
 }
 
-double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
+std::expected<double, ErrorType> CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
 {
     /* Calculation examples:
     * 5+8*-7
@@ -57,7 +37,7 @@ double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
     * Check whether the token is an operator or a numeric value
     * In case its a value, push the token onto the numstack, always
     * Numstack = {5}
-    * In case its an operator: 
+    * In case its an operator:
     * Check validity of the calculation, two operators cannot follow each other, but a - is a special case, since it may belong to the next value
     * e.g. -7 is split into - 7 so the - may not be an operator at all, just a value.
     * In this case, we have to be smart and either change the previous operator (in case it was + it can become - and vice versa), or otherwise we have to negate the next value
@@ -66,7 +46,7 @@ double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
     * In case it has lower precedence, process the .top of the operator stack first
     * Repeat until the newest .top has lower precedence than the newly read operator, then add the operator to the stack
     * In case of same precedence, check the associativity for left/right and act accordingly
-    * 
+    *
     ** Processing operator:
     * Get the operator (probably already done anyway) by .top
     * .pop the operator from the operator stack
@@ -97,8 +77,8 @@ double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
 
     // Step 0: validate braces
     {
-        const int iNumberOfOpenBraces       = CharacterCount(strEquation, '(');
-        const int iNumberOfClosingBraces    = CharacterCount(strEquation, ')');
+        const int iNumberOfOpenBraces       = std::ranges::count(strEquation, '(');
+        const int iNumberOfClosingBraces    = std::ranges::count(strEquation, ')');
         if (iNumberOfOpenBraces != iNumberOfClosingBraces)
         {
             // Problem in equation, missing ( or )
@@ -191,10 +171,10 @@ double CShuntingYard::Compute(const std::string& strEquation) noexcept(false)
     assert(m_NumStack.size() == 1);
     std::wcout << ("The result from the equation ") << strEquation.c_str() << (" is ") << m_NumStack[0] << ("\n") << OpenCloseLine.c_str() << ("\n");
 
-    return m_NumStack[0];
+    return m_NumStack.front();
 }
 
-void CShuntingYard::ProcessLastOperatorFromStack()
+std::optional<ErrorType> CShuntingYard::ProcessLastOperatorFromStack()
 {
     std::size_t NumStackSize = m_NumStack.size();
     assert(NumStackSize >= 2);
@@ -205,21 +185,28 @@ void CShuntingYard::ProcessLastOperatorFromStack()
     m_NumStack.pop_back();
     const CMathTokenOperator OperatorFromStack = m_OperatorStack.back();
     m_OperatorStack.pop_back();
-    const double dResult = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
-    m_NumStack.push_back(dResult);
-
-    std::wcout << ("Processed operation ") << dFirstOperand << OperatorFromStack.GetStr().c_str() << dSecondOperand << (", resulting in value ") << dResult << ("\n") << ("The current stacks are:\n");
+    const auto Result = OperatorFromStack.ProcessOperator(dFirstOperand, dSecondOperand);
+    if (!Result.has_value()) {
+        return Result.error();
+    }
+    m_NumStack.push_back(Result.value());
+    std::wcout << ("Processed operation ") << dFirstOperand << OperatorFromStack.GetStr().c_str() << dSecondOperand << (", resulting in value ") << Result.value() << ("\n") << ("The current stacks are:\n");
     PrintStacks();
+    return std::nullopt;
 }
 
-void CShuntingYard::AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator)
+std::optional<ErrorType> CShuntingYard::AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator)
 {
     while (!m_OperatorStack.empty() && Operator < m_OperatorStack.back())
     {
-        ProcessLastOperatorFromStack();
+        if (const auto Result = ProcessLastOperatorFromStack();  Result.has_value()) {
+            return Result;
+        }
     }
     m_OperatorStack.push_back(Operator);
+    return std::nullopt;
 }
+
 
 void CShuntingYard::PrintStacks() const
 {

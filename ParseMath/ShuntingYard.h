@@ -1,21 +1,25 @@
 #pragma once
-#include <vector>
+
 #include "CMathTokenOperator.h"
+
+#include <vector>
+#include <algorithm>
+#include <string>
 
 class CShuntingYard
 {
 public:
-    void ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number);
-
-    double Compute(const std::string& strEquation) noexcept(false);
+    std::expected<double, ErrorType> Compute(const std::string& strEquation) noexcept(false);
 
 private:
-    void ProcessLastOperatorFromStack();
-    void AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator);
+    std::optional<ErrorType> ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number);
 
-    const std::string                       m_strSeperator = (" ");
+    std::optional<ErrorType> ProcessLastOperatorFromStack();
+    std::optional<ErrorType> AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator);
+
+    const std::string          m_strSeperator = (" ");
     std::vector<double>                     m_NumStack;
-    std::vector<CMathTokenOperator>         m_OperatorStack;
+    std::vector<CMathTokenOperator>  m_OperatorStack;
     bool                                    m_bNextValueNegative = false;
     void PrintStacks() const;
 };

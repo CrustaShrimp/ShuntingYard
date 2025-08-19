@@ -1,17 +1,25 @@
 #pragma once
-#include <cassert>
 #include <cmath>
+#include <expected>
 #include <iostream>
+#include <ostream>
+#include <string>
+
+enum struct ErrorType {
+    DivideByZero,
+    InvalidOperation,
+    InvalidNumeric,
+};
 
 class CMathTokenOperator
 {
 public:
     static std::string GetSupportedTokens() { return "()^*/+-";}
 
-    explicit CMathTokenOperator(const char32_t Token)
+    explicit CMathTokenOperator(const char Token)
         :m_eOperatorType(EMathOperatorType::MOT_LAST)
-        ,m_eOperatorAssociativity(EMathOperatorAssociativity::MOA_LEFT)
         ,m_iOperatorPrecedence(-1)
+        ,m_eOperatorAssociativity(EMathOperatorAssociativity::MOA_LEFT)
     {
         switch (Token)
         {
@@ -45,7 +53,7 @@ public:
             m_iOperatorPrecedence = 1;
             break;
         default:
-            assert(false);
+            std::wcout << L"CMathTokenOperator: Invalid operator.\n";
             break;
         }
     };
@@ -56,13 +64,10 @@ public:
         {
             return rhs.m_eOperatorAssociativity == EMathOperatorAssociativity::MOA_LEFT;
         }
-        else
-        {
-            return lhs.m_iOperatorPrecedence < rhs.m_iOperatorPrecedence;
-        }
+        return lhs.m_iOperatorPrecedence < rhs.m_iOperatorPrecedence;
     }
 
-    double ProcessOperator(const double dFirst, const double dSecond) const
+    [[nodiscard]] std::expected<double, ErrorType> ProcessOperator(const double dFirst, const double dSecond) const
     {
         switch (m_eOperatorType)
         {
@@ -73,44 +78,42 @@ public:
             break;
         case EMathOperatorType::MOT_MULTIPLY:
             return dFirst * dSecond;
-        case EMathOperatorType::MOT_DIVIDE:
-            if (dSecond != 0.0)
+        case EMathOperatorType::MOT_DIVIDE: {
+            if (dSecond == 0.0)
             {
-                return dFirst / dSecond;
+                return std::unexpected(ErrorType::DivideByZero);
+
             }
-            else
-            {
-                std::wcout << ("A divide-by-zero is found, no valid answer is available");
-                return 0.0;
-            }
+            return dFirst / dSecond;
+        }
         case EMathOperatorType::MOT_ADD:
             return dFirst + dSecond;
         case EMathOperatorType::MOT_SUBTRACT:
             return dFirst - dSecond;
         default:
-            assert(false);
-            break;
+            return std::unexpected(ErrorType::InvalidOperation);
         }
-        return 0.0;
+
+        return std::unexpected(ErrorType::InvalidOperation);;
     }
 
-    bool IsOpenBrace() const
+    [[nodiscard]] bool IsOpenBrace() const
     {
         return m_eOperatorType == EMathOperatorType::MOT_BRACE_OPEN;
     }
 
-    bool IsCloseBrace() const
+    [[nodiscard]] bool IsCloseBrace() const
     {
         return m_eOperatorType == EMathOperatorType::MOT_BRACE_CLOSE;
     }
 
-    bool IsMinus() const
+    [[nodiscard]] bool IsMinus() const
     {
         return m_eOperatorType == EMathOperatorType::MOT_SUBTRACT;
     }
 
 
-    std::string GetStr() const
+    [[nodiscard]] std::string GetStr() const
     {
         switch (m_eOperatorType)
         {
@@ -129,9 +132,7 @@ public:
         case CMathTokenOperator::EMathOperatorType::MOT_SUBTRACT:
             return {'-'};
         default:
-            assert(false);
             return ("Undefined Operator");
-            break;
         }
     }
 
