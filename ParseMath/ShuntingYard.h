@@ -1,20 +1,25 @@
 #pragma once
-#include <atlstr.h>
-#include <vector>
+
 #include "CMathTokenOperator.h"
+
+#include <vector>
+#include <algorithm>
+#include <string>
 
 class CShuntingYard
 {
 public:
-    double Compute(const CString& strEquation) noexcept(false);
+    std::expected<double, ErrorType> Compute(const std::string& strEquation) noexcept(false);
 
 private:
-    void ProcessLastOperatorFromStack();
-    void AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator);
+    std::optional<ErrorType> ProcessNumber(bool &bPreviousTokenWasValue, const std::string& Number);
 
-    const CString                           m_strSeperator = _T(" ");
+    std::optional<ErrorType> ProcessLastOperatorFromStack();
+    std::optional<ErrorType> AddToStackAndProcessHigherPrecedenceOperators(CMathTokenOperator Operator);
+
+    const std::string          m_strSeperator = (" ");
     std::vector<double>                     m_NumStack;
-    std::vector<CMathTokenOperator>         m_OperatorStack;
+    std::vector<CMathTokenOperator>  m_OperatorStack;
     bool                                    m_bNextValueNegative = false;
     void PrintStacks() const;
 };
